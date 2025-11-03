@@ -47,7 +47,7 @@ print("=" * 50)
 SYMBOL = 'BTC/USDT:USDT'
 TIMEFRAME_MAIN = '15m'
 TIMEFRAME_HIGHER = '4h'
-INTERVAL = 900  # 3 минуты
+INTERVAL = 900  # 15 минут
 LEVERAGE = 10
 
 SUPERTREND_PERIOD = 8
@@ -196,16 +196,16 @@ def start_bot():
     asyncio.run(bot_loop())
 
 # ============================
-# Точка входа
+# Точка входа - ИСПРАВЛЕННАЯ
 # ============================
 if __name__ == "__main__":
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    logger.info("🌐 Flask сервер запущен на порту 10000")
+    # Запускаем бота в фоновом потоке
+    bot_thread = threading.Thread(target=start_bot, daemon=True)
+    bot_thread.start()
+    logger.info("🤖 Торговый бот запущен в фоновом потоке")
 
-    try:
-        start_bot()
-    except KeyboardInterrupt:
-        logger.info("🛑 Остановлено вручную")
-    except Exception as e:
-        logger.error(f"💥 Критическая ошибка: {e}")
+    # Запускаем Flask в основном потоке (чтобы Render был доволен)
+    logger.info("🌐 Запускаем Flask сервер на порту 10000")
+    run_flask()  # Этот вызов блокирует поток - это нормально!
+
+    # Этот код не выполнится, потому что Flask блокирует основной поток
