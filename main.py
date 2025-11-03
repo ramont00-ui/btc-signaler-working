@@ -14,7 +14,20 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return "🚀 BTC Signal Bot is running! Check logs for signals."
-
+    
+@app.route('/health')
+def health():
+    """Эндпоинт для проверки работоспособности"""
+    bot_status = "active" if (datetime.now() - bot_start_time).total_seconds() < 3600 else "possibly_stalled"
+    
+    return {
+        "status": "ok", 
+        "time": datetime.now().isoformat(),
+        "bot_uptime": str(datetime.now() - bot_start_time),
+        "bot_status": bot_status,
+        "service": "BTC Signal Bot"
+    }
+    
 def run_flask():
     """Запускает Flask в отдельном потоке"""
     app.run(host='0.0.0.0', port=10000, debug=False)
