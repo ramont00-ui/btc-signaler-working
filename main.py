@@ -18,8 +18,8 @@ print("=" * 50)
 SYMBOL = 'BTC/USDT:USDT'
 TIMEFRAME = '15m'
 INTERVAL = 900
-TELEGRAM_BOT_TOKEN = "ВАШ_TELEGRAM_BOT_TOKEN"  # 8296961504:AAEmgsjkSBewLaudDBYWranZWcfC6aBlNq4
-TELEGRAM_CHAT_ID = "ВАШ_CHAT_ID"               # 6453886559
+TELEGRAM_BOT_TOKEN = "ВАШ_TELEGRAM_BOT_TOKEN"  8296961504:AAEmgsjkSBewLaudDBYWranZWcfC6aBlNq4
+TELEGRAM_CHAT_ID = "ВАШ_CHAT_ID"               6453886559
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
