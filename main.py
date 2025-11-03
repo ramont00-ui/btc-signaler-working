@@ -1,4 +1,3 @@
-Yury, [03.11.2025 17:31]
 import os
 import logging
 import ccxt
@@ -126,8 +125,7 @@ def check_filters():
         volume_avg = calculate_volume_average(ohlcv_15m, VOLUME_PERIOD)
         volume_filter_passed = volume_avg and current_volume > (volume_avg * VOLUME_FILTER_THRESHOLD)
 
-Yury, [03.11.2025 17:31]
-direction_15m = calculate_simple_supertrend(ohlcv_15m, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
+        direction_15m = calculate_simple_supertrend(ohlcv_15m, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
         direction_4h = calculate_simple_supertrend(ohlcv_4h, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
         timeframe_filter_passed = direction_15m and direction_4h and direction_15m == direction_4h
 
