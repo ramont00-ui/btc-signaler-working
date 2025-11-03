@@ -4,12 +4,11 @@ import ccxt
 import asyncio
 from datetime import datetime, timedelta
 from telegram import Bot
-import pandas as pd
 import time
 from flask import Flask
 import threading
 
-# Создаем Flask приложение для удовлетворения Render
+# Создаем Flask приложение для Render
 app = Flask(__name__)
 
 @app.route('/')
@@ -23,7 +22,7 @@ def run_flask():
 print("=" * 50)
 print("🚀 BTC/USDT SIGNAL BOT")
 print("⚡ Bybit Futures | 10x Leverage") 
-print("📊 Multi-Filter System")
+print("📊 Multi-Filter System (No Pandas)")
 print("🌐 Web Server: Port 10000")
 print("=" * 50)
 
@@ -53,80 +52,113 @@ logger = logging.getLogger(__name__)
 exchange = ccxt.bybit({'enableRateLimit': True})
 last_signal = None
 
-def calculate_atr(df, period=14):
-    """Расчет Average True Range"""
-    high_low = df['high'] - df['low']
-    high_close = abs(df['high'] - df['close'].shift())
-    low_close = abs(df['low'] - df['close'].shift())
-    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
-    return true_range.rolling(window=period).mean()
+def calculate_simple_atr(ohlcv, period=14):
+    """Упрощенный расчет ATR без pandas"""
+    if len(ohlcv) < period + 1:
+        return None
+    
+    true_ranges = []
+    for i in range(1, len(ohlcv)):
+        high = ohlcv[i][2]
+        low = ohlcv[i][3]
+        prev_close = ohlcv[i-1][4]
+        
+        tr1 = high - low
+        tr2 = abs(high - prev_close)
+        tr3 = abs(low - prev_close)
+        true_range = max(tr1, tr2, tr3)
+        true_ranges.append(true_range)
+    
+    # Простое скользящее среднее для ATR
+    atr = sum(true_ranges[-period:]) / period
+    return atr
 
-def calculate_supertrend(df, period=7, multiplier=3):
-    """Упрощенный расчет Supertrend направления"""
-    atr = calculate_atr(df, period)
-    hl2 = (df['high'] + df['low']) / 2
+def calculate_simple_supertrend(ohlcv, period=7, multiplier=3):
+    """Упрощенный расчет Supertrend без pandas"""
+    if len(ohlcv) < period + 1:
+        return None
+    
+    atr = calculate_simple_atr(ohlcv, period)
+    if atr is None:
+        return None
+    
+    # Текущие значения
+    current_high = ohlcv[-1][2]
+    current_low = ohlcv[-1][3]
+    current_close = ohlcv[-1][4]
+    
+    # Базовые линии
+    hl2 = (current_high + current_low) / 2
     upper_band = hl2 + (multiplier * atr)
     lower_band = hl2 - (multiplier * atr)
     
-    direction = []
-    for i in range(len(df)):
-        if i == 0:
-            direction.append(1)
-            continue
-            
-        if df['close'].iloc[i] > upper_band.iloc[i-1]:
-            direction.append(1)  # UP
-        elif df['close'].iloc[i] < lower_band.iloc[i-1]:
-            direction.append(-1)  # DOWN
-        else:
-            direction.append(direction[-1])
+    # Предыдущие значения для сравнения
+    prev_close = ohlcv[-2][4] if len(ohlcv) >= 2 else current_close
     
-    return direction[-1]
+    # Определение направления
+    if current_close > upper_band:
+        return 1  # UP
+    elif current_close < lower_band:
+        return -1  # DOWN
+    else:
+        # Если между band'ами, сохраняем предыдущее направление
+        if prev_close > upper_band:
+            return 1
+        elif prev_close < lower_band:
+            return -1
+        else:
+            return 1  # По умолчанию UP
 
-def get_ohlcv_data(symbol, timeframe, limit=100):
-    """Получение OHLCV данных"""
-    try:
-        ohlcv = exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-        df = pd.DataFrame(ohlcv, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-        df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-        df.set_index('timestamp', inplace=True)
-        for col in ['open', 'high', 'low', 'close', 'volume']:
-            df[col] = pd.to_numeric(df[col])
-        return df
-    except Exception as e:
-        logger.error(f"Ошибка получения данных {timeframe}: {e}")
+def calculate_volume_average(ohlcv, period=20):
+    """Расчет среднего объема"""
+    if len(ohlcv) < period:
         return None
+    
+    volumes = [candle[5] for candle in ohlcv[-period:]]
+    return sum(volumes) / period
 
 def check_filters():
-    """Проверка всех фильтров"""
+    """Проверка всех фильтров без pandas"""
     try:
-        # Получаем данные
-        df_15m = get_ohlcv_data(SYMBOL, TIMEFRAME_MAIN, 200)
-        df_4h = get_ohlcv_data(SYMBOL, TIMEFRAME_HIGHER, 200)
+        # Получаем данные для 15m и 4h
+        ohlcv_15m = exchange.fetch_ohlcv(SYMBOL, TIMEFRAME_MAIN, limit=200)
+        ohlcv_4h = exchange.fetch_ohlcv(SYMBOL, TIMEFRAME_HIGHER, limit=200)
         
-        if df_15m is None or df_4h is None:
+        if not ohlcv_15m or not ohlcv_4h:
             return None, None, []
         
         # Текущая цена и объем
-        current_price = df_15m['close'].iloc[-1]
-        current_volume = df_15m['volume'].iloc[-1]
+        current_price = ohlcv_15m[-1][4]
+        current_volume = ohlcv_15m[-1][5]
         
         # Расчет ATR фильтра
-        atr_current = calculate_atr(df_15m, SUPERTREND_PERIOD).iloc[-1]
-        atr_avg = calculate_atr(df_15m, ATR_PERIOD).iloc[-1]
-        atr_filter_passed = atr_current > (atr_avg * ATR_FILTER_THRESHOLD)
+        atr_current = calculate_simple_atr(ohlcv_15m, SUPERTREND_PERIOD)
+        atr_avg = calculate_simple_atr(ohlcv_15m, ATR_PERIOD)
+        
+        atr_filter_passed = False
+        if atr_current and atr_avg:
+            atr_filter_passed = atr_current > (atr_avg * ATR_FILTER_THRESHOLD)
         
         # Расчет Volume фильтра
-        volume_avg = df_15m['volume'].rolling(VOLUME_PERIOD).mean().iloc[-1]
-        volume_filter_passed = current_volume > (volume_avg * VOLUME_FILTER_THRESHOLD)
+        volume_avg = calculate_volume_average(ohlcv_15m, VOLUME_PERIOD)
+        volume_filter_passed = False
+        if volume_avg:
+            volume_filter_passed = current_volume > (volume_avg * VOLUME_FILTER_THRESHOLD)
         
         # Расчет таймфрейм фильтра
-        direction_15m = calculate_supertrend(df_15m, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
-        direction_4h = calculate_supertrend(df_4h, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
-        timeframe_filter_passed = (direction_15m == direction_4h)
+        direction_15m = calculate_simple_supertrend(ohlcv_15m, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
+        direction_4h = calculate_simple_supertrend(ohlcv_4h, SUPERTREND_PERIOD, SUPERTREND_MULTIPLIER)
+        
+        timeframe_filter_passed = False
+        if direction_15m and direction_4h:
+            timeframe_filter_passed = (direction_15m == direction_4h)
         
         # Определение сигнала
-        signal = "LONG" if direction_15m == 1 else "SHORT" if direction_15m == -1 else None
+        signal = None
+        if direction_15m == 1:
+            signal = "LONG"
+        elif direction_15m == -1:
+            signal = "SHORT"
         
         # Собираем пройденные фильтры
         passed_filters = []
