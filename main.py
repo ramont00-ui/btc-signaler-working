@@ -6,11 +6,25 @@ from datetime import datetime, timedelta
 from telegram import Bot
 import pandas as pd
 import time
+from flask import Flask
+import threading
+
+# Создаем Flask приложение для удовлетворения Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "🚀 BTC Signal Bot is running! Check logs for signals."
+
+def run_flask():
+    """Запускает Flask в отдельном потоке"""
+    app.run(host='0.0.0.0', port=10000, debug=False)
 
 print("=" * 50)
 print("🚀 BTC/USDT SIGNAL BOT")
-print("⚡ Bybit Futures | 10x Leverage")
+print("⚡ Bybit Futures | 10x Leverage") 
 print("📊 Multi-Filter System")
+print("🌐 Web Server: Port 10000")
 print("=" * 50)
 
 # ============================
@@ -208,7 +222,7 @@ async def check_market():
     except Exception as e:
         logger.error(f"💥 Ошибка проверки рынка: {e}")
 
-async def main_loop():
+async def bot_loop():
     """Основной цикл бота"""
     logger.info("🚀 Бот запущен с системой фильтров!")
     logger.info(f"⏰ Интервал проверки: {INTERVAL} секунд")
@@ -221,9 +235,19 @@ async def main_loop():
         logger.info(f"💤 Ожидание {INTERVAL} секунд до следующей проверки...")
         await asyncio.sleep(INTERVAL)
 
+def start_bot():
+    """Запуск бота в отдельном потоке"""
+    asyncio.run(bot_loop())
+
 if __name__ == "__main__":
+    # Запускаем Flask в отдельном потоке
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    logger.info("🌐 Flask сервер запущен на порту 10000")
+    
+    # Запускаем бота в основном потоке
     try:
-        asyncio.run(main_loop())
+        start_bot()
     except KeyboardInterrupt:
         logger.info("🛑 Бот остановлен пользователем")
     except Exception as e:
