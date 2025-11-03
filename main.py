@@ -11,7 +11,7 @@ import threading
 # ============================
 # Flask для Render
 # ============================
-app = Flask(name)
+app = Flask(__name__)
 bot_start_time = datetime.now()
 
 @app.route('/')
