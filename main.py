@@ -198,7 +198,7 @@ def start_bot():
 # ============================
 # Точка входа
 # ============================
-if name == "main":
+if __name__ == "__main__":
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
     logger.info("🌐 Flask сервер запущен на порту 10000")
