@@ -275,14 +275,17 @@ async def bot_loop():
     logger.info("📱 Ожидайте сигналы в Telegram...")
     
     # Бесконечный цикл
+    def bot_loop():
+    logger.info("🚀 Бот запущен с системой фильтров (синхронно)!")
     while True:
-        await check_market()
-        logger.info(f"💤 Ожидание {INTERVAL} секунд до следующей проверки...")
-        await asyncio.sleep(INTERVAL)
+        try:
+            asyncio.run(check_market())
+        except Exception as e:
+            logger.error(f"Ошибка в check_market: {e}")
+        time.sleep(INTERVAL)
 
 def start_bot():
-    """Запуск бота в отдельном потоке"""
-    asyncio.run(bot_loop())
+   bot_loop()
 
 if __name__ == "__main__":
     # Запускаем Flask в отдельном потоке
