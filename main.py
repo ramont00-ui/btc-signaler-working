@@ -61,7 +61,7 @@ TELEGRAM_BOT_TOKEN = "8296961504:AAEmgsjkSBewLaudDBYWranZWcfC6aBlNq4"
 TELEGRAM_CHAT_ID = "6453886559"
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 exchange = ccxt.bybit({'enableRateLimit': True})
 last_signal = None
